@@ -90,7 +90,7 @@ export const generateLabContent = async (
       required: ["title", "quiz"]
     };
   } else if (tool === 'slides') {
-    prompt = "Create content for a professional slide presentation (10 slides). Each slide needs a title, bullet points, and speaker notes.";
+    prompt = "Create a 10-slide professional presentation. For each slide, provide a title, 3-4 bullet points, speaker notes, and a SINGLE NOUN OR SIMPLE 2-WORD PHRASE for a relevant background image (e.g., 'microscope', 'galaxy', 'dna', 'robotics'). Do not use generic words like 'slide' or 'presentation'.";
     responseSchema = {
       type: Type.OBJECT,
       properties: {
@@ -102,9 +102,10 @@ export const generateLabContent = async (
             properties: {
               slideTitle: { type: Type.STRING },
               bullets: { type: Type.ARRAY, items: { type: Type.STRING } },
-              speakerNotes: { type: Type.STRING }
+              speakerNotes: { type: Type.STRING },
+              imageKeyword: { type: Type.STRING }
             },
-            required: ["slideTitle", "bullets", "speakerNotes"]
+            required: ["slideTitle", "bullets", "speakerNotes", "imageKeyword"]
           }
         }
       },

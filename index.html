@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NexusAI - Advanced Intelligence</title>
+    <title>StudyEasierAI - Your Academic Powerhouse</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
@@ -34,6 +34,39 @@
       }
       .animate-fadeIn {
         animation: fadeIn 0.4s ease-out forwards;
+      }
+      
+      /* Print Styles for PDF Presentation Export */
+      @media print {
+        body, html {
+          background: white !important;
+          color: black !important;
+        }
+        #root > div > div:first-child, /* Sidebar */
+        header, /* Lab Header */
+        nav, /* Tool Selector */
+        button, /* Control Buttons */
+        .no-print {
+          display: none !important;
+        }
+        main {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+        }
+        .slide-container {
+          page-break-after: always !important;
+          display: block !important;
+          width: 100% !important;
+          height: 100vh !important;
+          border: none !important;
+          box-shadow: none !important;
+          background: white !important;
+        }
+        .slide-image {
+          filter: none !important;
+          opacity: 1 !important;
+        }
       }
     </style>
   <script type="importmap">

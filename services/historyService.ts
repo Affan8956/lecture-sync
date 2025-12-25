@@ -1,8 +1,8 @@
 
 import { ChatSession, LabAsset, AIMode } from '../types';
 
-const CHAT_PREFIX = 'nexus_chats_';
-const ASSET_PREFIX = 'nexus_assets_';
+const CHAT_PREFIX = 'studyeasier_chats_';
+const ASSET_PREFIX = 'studyeasier_assets_';
 
 export const saveChat = (userId: string, chat: ChatSession) => {
   const chats = getHistory(userId);
@@ -37,7 +37,9 @@ export const deleteChat = (userId: string, id: string) => {
 
 export const saveAsset = (userId: string, asset: LabAsset) => {
   const assets = getAssets(userId);
-  assets.unshift(asset);
+  const idx = assets.findIndex(a => a.id === asset.id);
+  if (idx >= 0) assets[idx] = asset;
+  else assets.unshift(asset);
   localStorage.setItem(ASSET_PREFIX + userId, JSON.stringify(assets));
 };
 

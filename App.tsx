@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, ChatSession, ViewState, LabAsset, AuthState, AIMode } from './types';
 import { getCurrentSession, logout } from './services/authService';
-import { getHistory, saveChat, createNewChat, getAssets, saveAsset } from './services/historyService';
+import { getHistory, saveChat, deleteChat, createNewChat, getAssets, saveAsset } from './services/historyService';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [assets, setAssets] = useState<LabAsset[]>([]);
+  const [viewingAsset, setViewingAsset] = useState<LabAsset | null>(null);
 
   // Init Session
   useEffect(() => {
@@ -41,6 +42,7 @@ const App: React.FC = () => {
     logout();
     setAuth({ user: null, token: null, isAuthenticated: false });
     setView('dashboard');
+    setViewingAsset(null);
   };
 
   const handleNewChat = (mode: AIMode = 'study') => {
@@ -49,6 +51,14 @@ const App: React.FC = () => {
     setChats([chat, ...chats]);
     setActiveChatId(chat.id);
     setView('chat');
+  };
+
+  const handleDeleteChat = (id: string) => {
+    if (!auth.user) return;
+    deleteChat(auth.user.id, id);
+    const updatedChats = chats.filter(c => c.id !== id);
+    setChats(updatedChats);
+    if (activeChatId === id) setActiveChatId(null);
   };
 
   const handleSaveAsset = (asset: Omit<LabAsset, 'id' | 'timestamp' | 'userId'>) => {
@@ -63,6 +73,11 @@ const App: React.FC = () => {
     setAssets([newAsset, ...assets]);
   };
 
+  const handleOpenAsset = (asset: LabAsset) => {
+    setViewingAsset(asset);
+    setView('lab');
+  };
+
   if (!auth.isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6">
@@ -75,11 +90,12 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-[#0a0a0a] text-slate-100 overflow-hidden">
       <Sidebar 
         view={view} 
-        setView={setView} 
+        setView={(v) => { setView(v); if(v !== 'lab') setViewingAsset(null); }} 
         chats={chats}
         activeChatId={activeChatId}
         onSelectChat={(id) => { setActiveChatId(id); setView('chat'); }}
         onNewChat={() => handleNewChat()}
+        onDeleteChat={handleDeleteChat}
         user={auth.user!}
         onLogout={handleLogout}
       />
@@ -98,7 +114,7 @@ const App: React.FC = () => {
         {view === 'chat' && (
           <ChatInterface 
             chat={chats.find(c => c.id === activeChatId) || null}
-            onSendMessage={(msg) => {/* logic in ChatInterface component */}}
+            onSendMessage={(msg) => {/* handled in ChatInterface */}}
             onUpdateChat={(updated) => {
                saveChat(auth.user!.id, updated);
                setChats(chats.map(c => c.id === updated.id ? updated : c));
@@ -107,14 +123,14 @@ const App: React.FC = () => {
         )}
 
         {view === 'lab' && (
-          <LabPanel onSaveAsset={handleSaveAsset} />
+          <LabPanel onSaveAsset={handleSaveAsset} viewingAsset={viewingAsset} />
         )}
 
         {view === 'vault' && (
           <Vault 
             assets={assets} 
             chats={chats} 
-            onViewAsset={(asset) => {/* logic to show asset */}}
+            onViewAsset={handleOpenAsset}
           />
         )}
       </main>

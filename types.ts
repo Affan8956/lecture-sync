@@ -30,6 +30,13 @@ export interface ChatSession {
   updatedAt: number;
 }
 
+export interface Slide {
+  slideTitle: string;
+  bullets: string[];
+  speakerNotes: string;
+  imageKeyword: string; // Used to fetch relevant imagery
+}
+
 export interface LabAsset {
   id: string;
   userId: string;
@@ -46,13 +53,11 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-// Added missing Flashcard interface used by FlashcardView
 export interface Flashcard {
   front: string;
   back: string;
 }
 
-// Added missing QuizQuestion interface used by QuizView
 export interface QuizQuestion {
   question: string;
   options: string[];

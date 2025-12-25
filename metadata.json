@@ -1,0 +1,7 @@
+{
+  "name": "LectureSync AI",
+  "description": "Convert lecture recordings and PDFs into comprehensive summaries, interactive flashcards, and practice quizzes using advanced AI.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

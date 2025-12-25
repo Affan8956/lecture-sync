@@ -18,6 +18,21 @@ export interface LectureData {
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
   title: string;
+  timestamp: number;
+  id: string;
+  fileType: 'pdf' | 'audio';
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
 }
 
 export enum ProcessingStatus {

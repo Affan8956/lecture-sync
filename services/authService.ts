@@ -15,18 +15,23 @@ export const signup = async (name: string, email: string, password: string): Pro
     throw new Error('User already exists with this email.');
   }
 
+  // FIX: Set defaultMode to 'study' as 'general' is not a valid AIMode value
   const newUser = {
     id: Math.random().toString(36).substr(2, 9),
     name,
     email,
     password, // In a real app, this would be hashed on the server
+    preferences: {
+      theme: 'dark' as const,
+      defaultMode: 'study' as const,
+    },
   };
 
   users.push(newUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
   const { password: _, ...userWithoutPassword } = newUser;
-  return userWithoutPassword;
+  return userWithoutPassword as User;
 };
 
 export const login = async (email: string, password: string): Promise<{ user: User; token: string }> => {
@@ -44,7 +49,7 @@ export const login = async (email: string, password: string): Promise<{ user: Us
 
   localStorage.setItem(SESSION_KEY, JSON.stringify({ user: userWithoutPassword, token }));
   
-  return { user: userWithoutPassword, token };
+  return { user: userWithoutPassword as User, token };
 };
 
 export const logout = () => {

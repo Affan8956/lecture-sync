@@ -1,31 +1,46 @@
 
-import { LectureData } from '../types';
+import { ChatSession, LabAsset, AIMode } from '../types';
 
-const HISTORY_KEY_PREFIX = 'studyeasier_history_';
+const CHAT_PREFIX = 'nexus_chats_';
+const ASSET_PREFIX = 'nexus_assets_';
 
-export const saveToHistory = (userId: string, data: LectureData) => {
-  const key = HISTORY_KEY_PREFIX + userId;
-  const history = JSON.parse(localStorage.getItem(key) || '[]');
-  
-  // Update if exists, otherwise add
-  const index = history.findIndex((item: LectureData) => item.id === data.id);
-  if (index >= 0) {
-    history[index] = data;
-  } else {
-    history.unshift(data);
-  }
-  
-  localStorage.setItem(key, JSON.stringify(history));
+export const saveChat = (userId: string, chat: ChatSession) => {
+  const chats = getHistory(userId);
+  const idx = chats.findIndex(c => c.id === chat.id);
+  if (idx >= 0) chats[idx] = chat;
+  else chats.unshift(chat);
+  localStorage.setItem(CHAT_PREFIX + userId, JSON.stringify(chats));
 };
 
-export const getHistory = (userId: string): LectureData[] => {
-  const key = HISTORY_KEY_PREFIX + userId;
-  return JSON.parse(localStorage.getItem(key) || '[]');
+export const getHistory = (userId: string): ChatSession[] => {
+  return JSON.parse(localStorage.getItem(CHAT_PREFIX + userId) || '[]');
 };
 
-export const deleteFromHistory = (userId: string, lectureId: string) => {
-  const key = HISTORY_KEY_PREFIX + userId;
-  const history = JSON.parse(localStorage.getItem(key) || '[]');
-  const filtered = history.filter((item: LectureData) => item.id !== lectureId);
-  localStorage.setItem(key, JSON.stringify(filtered));
+export const createNewChat = (userId: string, mode: AIMode): ChatSession => {
+  const chat: ChatSession = {
+    id: Math.random().toString(36).substr(2, 9),
+    userId,
+    title: 'New Discussion',
+    mode,
+    messages: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  saveChat(userId, chat);
+  return chat;
+};
+
+export const deleteChat = (userId: string, id: string) => {
+  const chats = getHistory(userId).filter(c => c.id !== id);
+  localStorage.setItem(CHAT_PREFIX + userId, JSON.stringify(chats));
+};
+
+export const saveAsset = (userId: string, asset: LabAsset) => {
+  const assets = getAssets(userId);
+  assets.unshift(asset);
+  localStorage.setItem(ASSET_PREFIX + userId, JSON.stringify(assets));
+};
+
+export const getAssets = (userId: string): LabAsset[] => {
+  return JSON.parse(localStorage.getItem(ASSET_PREFIX + userId) || '[]');
 };

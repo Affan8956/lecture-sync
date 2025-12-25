@@ -1,32 +1,43 @@
 
-export interface Flashcard {
-  id: string;
-  front: string;
-  back: string;
-}
-
-export interface QuizQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer: number; // Index of the correct option
-  explanation: string;
-}
-
-export interface LectureData {
-  summary: string;
-  flashcards: Flashcard[];
-  quiz: QuizQuestion[];
-  title: string;
-  timestamp: number;
-  id: string;
-  fileType: 'pdf' | 'audio';
-}
+export type AIMode = 'study' | 'coding' | 'writing' | 'tutor' | 'research';
+export type ViewState = 'dashboard' | 'chat' | 'lab' | 'vault' | 'settings';
+export type LabTool = 'summary' | 'quiz' | 'slides';
 
 export interface User {
   id: string;
   email: string;
   name: string;
+  preferences: {
+    theme: 'light' | 'dark' | 'system';
+    defaultMode: AIMode;
+  };
+}
+
+export interface Message {
+  id: string;
+  role: 'user' | 'model';
+  content: string;
+  timestamp: number;
+}
+
+export interface ChatSession {
+  id: string;
+  userId: string;
+  title: string;
+  mode: AIMode;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface LabAsset {
+  id: string;
+  userId: string;
+  title: string;
+  type: LabTool;
+  content: any; // Can be string (summary), array (quiz), or array (slides)
+  sourceName: string;
+  timestamp: number;
 }
 
 export interface AuthState {
@@ -35,12 +46,16 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-export enum ProcessingStatus {
-  IDLE = 'IDLE',
-  UPLOADING = 'UPLOADING',
-  SUMMARIZING = 'SUMMARIZING',
-  GENERATING_CARDS = 'GENERATING_CARDS',
-  GENERATING_QUIZ = 'GENERATING_QUIZ',
-  COMPLETED = 'COMPLETED',
-  ERROR = 'ERROR'
+// Added missing Flashcard interface used by FlashcardView
+export interface Flashcard {
+  front: string;
+  back: string;
+}
+
+// Added missing QuizQuestion interface used by QuizView
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
 }

@@ -1,135 +1,94 @@
 
 import React from 'react';
-import { LectureData, User } from '../types';
+import { User, ChatSession, LabAsset, ViewState } from '../types';
 
 interface DashboardProps {
   user: User;
-  history: LectureData[];
-  onSelectItem: (item: LectureData) => void;
-  onNewUpload: () => void;
-  onDeleteHistory: (id: string) => void;
+  chats: ChatSession[];
+  assets: LabAsset[];
+  onAction: (target: ViewState) => void;
+  onNewChat: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, history, onSelectItem, onNewUpload, onDeleteHistory }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, chats, assets, onAction, onNewChat }) => {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 animate-fadeIn">
-      {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 mb-2">
-            Hello, {user.name.split(' ')[0]} 👋
+    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-12">
+          <h1 className="text-5xl font-black mb-2 tracking-tight">
+            Welcome, <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-violet-400">{user.name.split(' ')[0]}</span>
           </h1>
-          <p className="text-slate-500 text-lg">
-            Ready to master some new material today?
-          </p>
-        </div>
-        <button
-          onClick={onNewUpload}
-          className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-3"
-        >
-          <i className="fas fa-plus"></i> New Lecture Upload
-        </button>
-      </div>
+          <p className="text-slate-500 text-lg">Your workspace is synchronized and ready for analysis.</p>
+        </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4 text-xl">
-            <i className="fas fa-book-open"></i>
-          </div>
-          <div className="text-3xl font-black text-slate-900">{history.length}</div>
-          <div className="text-slate-500 font-medium">Lectures Analyzed</div>
-        </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 text-xl">
-            <i className="fas fa-bolt"></i>
-          </div>
-          <div className="text-3xl font-black text-slate-900">
-            {history.reduce((acc, curr) => acc + curr.flashcards.length, 0)}
-          </div>
-          <div className="text-slate-500 font-medium">Total Flashcards</div>
-        </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4 text-xl">
-            <i className="fas fa-question-circle"></i>
-          </div>
-          <div className="text-3xl font-black text-slate-900">
-            {history.reduce((acc, curr) => acc + curr.quiz.length, 0)}
-          </div>
-          <div className="text-slate-500 font-medium">Practice Questions</div>
-        </div>
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4 text-xl">
-            <i className="fas fa-calendar-alt"></i>
-          </div>
-          <div className="text-3xl font-black text-slate-900">Active</div>
-          <div className="text-slate-500 font-medium">Student Status</div>
-        </div>
-      </div>
-
-      {/* History Section */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-3">
-          <i className="fas fa-history text-indigo-500"></i>
-          Previous Generations
-        </h2>
-
-        {history.length === 0 ? (
-          <div className="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-20 text-center">
-            <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
-              <i className="fas fa-folder-open"></i>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <div 
+            onClick={() => onNewChat()}
+            className="group p-8 bg-[#151515] border border-slate-800 rounded-3xl hover:border-indigo-500/50 hover:bg-indigo-600/5 transition-all cursor-pointer shadow-xl"
+          >
+            <div className="w-14 h-14 bg-indigo-600/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
+              <i className="fas fa-plus text-xl"></i>
             </div>
-            <h3 className="text-xl font-bold text-slate-700 mb-2">No history yet</h3>
-            <p className="text-slate-400 mb-8 max-w-xs mx-auto">
-              Upload your first lecture to see it here and start learning smarter.
-            </p>
-            <button
-              onClick={onNewUpload}
-              className="text-indigo-600 font-bold hover:underline"
-            >
-              Get started now
-            </button>
+            <h3 className="text-xl font-bold mb-2">Neural Chat</h3>
+            <p className="text-slate-500 text-sm">Start a conversational reasoning session with Gemini 3 Pro.</p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {history.map((item) => (
-              <div 
-                key={item.id}
-                className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden"
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${
-                      item.fileType === 'pdf' ? 'bg-red-500' : 'bg-blue-500'
-                    }`}>
-                      <i className={`fas ${item.fileType === 'pdf' ? 'fa-file-pdf' : 'fa-microphone'}`}></i>
-                    </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteHistory(item.id);
-                      }}
-                      className="text-slate-300 hover:text-rose-500 transition-colors p-2"
-                    >
-                      <i className="fas fa-trash-alt"></i>
-                    </button>
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-1">{item.title}</h3>
-                  <p className="text-slate-400 text-sm mb-6">
-                    {new Date(item.timestamp).toLocaleDateString()} • {item.flashcards.length} cards • {item.quiz.length} questions
-                  </p>
-                  <button
-                    onClick={() => onSelectItem(item)}
-                    className="w-full py-3 bg-slate-50 group-hover:bg-indigo-600 group-hover:text-white text-slate-600 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
-                  >
-                    View Materials
-                    <i className="fas fa-arrow-right text-xs"></i>
-                  </button>
-                </div>
+
+          <div 
+            onClick={() => onAction('lab')}
+            className="group p-8 bg-[#151515] border border-slate-800 rounded-3xl hover:border-emerald-500/50 hover:bg-emerald-600/5 transition-all cursor-pointer shadow-xl"
+          >
+            <div className="w-14 h-14 bg-emerald-600/20 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-110 transition-transform">
+              <i className="fas fa-microscope text-xl"></i>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Knowledge Lab</h3>
+            <p className="text-slate-500 text-sm">Extract summaries, quizzes, or slides from any document.</p>
+          </div>
+
+          <div 
+            onClick={() => onAction('vault')}
+            className="group p-8 bg-[#151515] border border-slate-800 rounded-3xl hover:border-amber-500/50 hover:bg-amber-600/5 transition-all cursor-pointer shadow-xl"
+          >
+            <div className="w-14 h-14 bg-amber-600/20 rounded-2xl flex items-center justify-center text-amber-400 mb-6 group-hover:scale-110 transition-transform">
+              <i className="fas fa-vault text-xl"></i>
+            </div>
+            <h3 className="text-xl font-bold mb-2">Private Vault</h3>
+            <p className="text-slate-500 text-sm">Review your generated knowledge and persistent chat history.</p>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+           <section>
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 px-2">Recent Chats</h4>
+              <div className="space-y-3">
+                 {chats.slice(0, 3).map(chat => (
+                   <div key={chat.id} className="p-4 bg-[#121212] border border-slate-800 rounded-2xl flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <i className="fas fa-comment-alt text-indigo-400 text-xs"></i>
+                        <span className="font-bold text-sm truncate max-w-[200px]">{chat.title}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-600 uppercase font-bold">{new Date(chat.updatedAt).toLocaleDateString()}</span>
+                   </div>
+                 ))}
               </div>
-            ))}
-          </div>
-        )}
+           </section>
+
+           <section>
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 px-2">Knowledge Assets</h4>
+              <div className="space-y-3">
+                 {assets.slice(0, 3).map(asset => (
+                   <div key={asset.id} className="p-4 bg-[#121212] border border-slate-800 rounded-2xl flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <i className={`fas text-xs ${asset.type === 'summary' ? 'fa-file-text text-emerald-400' : 'fa-tasks text-amber-400'}`}></i>
+                        <span className="font-bold text-sm truncate max-w-[200px]">{asset.title}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-600 uppercase font-bold">{asset.type}</span>
+                   </div>
+                 ))}
+              </div>
+           </section>
+        </div>
       </div>
     </div>
   );

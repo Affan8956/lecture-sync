@@ -69,7 +69,7 @@ const App: React.FC = () => {
                 <i className="fas fa-graduation-cap text-xl"></i>
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-                LectureSync AI
+                studyeasierAI
               </span>
             </div>
             {lectureData && (
@@ -208,7 +208,7 @@ const App: React.FC = () => {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-400 text-sm">
-          <p>© 2024 LectureSync AI. Powered by Gemini. All rights reserved.</p>
+          <p>© 2024 studyeasierAI. Powered by Gemini. All rights reserved.</p>
         </div>
       </footer>
     </div>

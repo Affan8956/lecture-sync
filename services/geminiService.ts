@@ -23,16 +23,21 @@ export const processLectureContent = async (
               },
             },
             {
-              text: `Act as an expert academic tutor. Analyze this lecture content and generate:
-              1. A comprehensive, structured summary (Markdown format).
-              2. 8-10 high-quality flashcards for key concepts.
-              3. A 5-10 question multiple-choice quiz.
-              
-              Output your response as a JSON object with the following structure:
+              text: `Act as a world-class academic scribe and tutor. Analyze the provided lecture content and generate a highly organized learning package.
+
+              FOLLOW THESE STRICT FORMATTING RULES FOR THE SUMMARY:
+              1. Use a clear H1 title for the main topic.
+              2. Use H2 headers for major sections (e.g., Core Concepts, Key Terminology, Detailed Analysis).
+              3. WRITE THE SUMMARY POINT-WISE: Use bullet points ( - ) for all details. Never write long paragraphs.
+              4. USE SYMBOLS PROPERLY: Use arrows (→) for processes/consequences, bullet points for lists, and mathematical symbols where appropriate.
+              5. BOLD (using **bold**) key terms the first time they appear.
+              6. Ensure logical flow between points.
+
+              Output your response as a JSON object with this exact structure:
               {
-                "title": "A descriptive title for the lecture",
-                "summary": "Detailed summary in markdown...",
-                "flashcards": [{"front": "Question/Term", "back": "Answer/Definition"}],
+                "title": "Clear Academic Title",
+                "summary": "The point-wise markdown summary...",
+                "flashcards": [{"front": "Term/Question", "back": "Definition/Explanation"}],
                 "quiz": [{"question": "...", "options": ["...", "...", "...", "..."], "correctAnswer": 0, "explanation": "..."}]
               }`
             },
@@ -81,7 +86,6 @@ export const processLectureContent = async (
 
     const result = JSON.parse(response.text || '{}');
     
-    // Add IDs for React keys
     return {
       title: result.title || fileName.replace(/\.[^/.]+$/, ""),
       summary: result.summary,

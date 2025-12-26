@@ -51,7 +51,7 @@ const QuizView: React.FC<QuizViewProps> = ({ quiz }) => {
     a.click();
   };
 
-  if (quiz.length === 0) return <div className="text-slate-500 italic">No quiz intelligence found.</div>;
+  if (quiz.length === 0) return <div className="text-slate-500 italic">No study intelligence found.</div>;
 
   if (isFinished) {
     const percentage = Math.round((score / quiz.length) * 100);
@@ -102,7 +102,7 @@ const QuizView: React.FC<QuizViewProps> = ({ quiz }) => {
     <div className="max-w-2xl mx-auto py-8 px-4 animate-fadeIn">
       <div className="flex items-center justify-between mb-8">
         <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-4 py-2 rounded-xl uppercase tracking-[0.2em] border border-emerald-500/20">
-          Neural Test {currentIndex + 1} / {quiz.length}
+          Knowledge Check {currentIndex + 1} / {quiz.length}
         </span>
         <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
           Score: {score}
@@ -152,7 +152,7 @@ const QuizView: React.FC<QuizViewProps> = ({ quiz }) => {
       {isAnswered && (
         <div className="bg-emerald-600/5 rounded-2xl p-6 mb-8 border border-emerald-500/10 animate-fadeIn">
           <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-            <i className="fas fa-lightbulb"></i> Neural Insight
+            <i className="fas fa-lightbulb"></i> Smart Insight
           </h4>
           <p className="text-slate-400 text-xs leading-relaxed italic">{q.explanation}</p>
         </div>
@@ -176,7 +176,7 @@ const QuizView: React.FC<QuizViewProps> = ({ quiz }) => {
             onClick={handleNext}
             className="flex-1 py-5 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-600/20 uppercase tracking-widest text-xs"
           >
-            {currentIndex + 1 < quiz.length ? 'Next Module' : 'Finish Intelligence Check'}
+            {currentIndex + 1 < quiz.length ? 'Next Module' : 'Finish Mastery Check'}
           </button>
         )}
       </div>

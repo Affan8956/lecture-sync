@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,6 +6,8 @@
     <title>StudyEasierAI - Your Academic Powerhouse</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Library for direct PDF generation from DOM -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
       body {
@@ -36,37 +37,62 @@
         animation: fadeIn 0.4s ease-out forwards;
       }
       
-      /* Print Styles for PDF Presentation Export */
+      /* Print Styles for High-Quality PDF Export */
       @media print {
-        body, html {
-          background: white !important;
-          color: black !important;
+        @page {
+          margin: 0;
+          size: auto;
         }
+        body, html {
+          background-color: #0d0d0d !important;
+          color: #f1f5f9 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
         #root > div > div:first-child, /* Sidebar */
-        header, /* Lab Header */
-        nav, /* Tool Selector */
-        button, /* Control Buttons */
         .no-print {
           display: none !important;
         }
+
         main {
           margin: 0 !important;
           padding: 0 !important;
           width: 100% !important;
+          background-color: #0d0d0d !important;
         }
-        .slide-container {
-          page-break-after: always !important;
-          display: block !important;
-          width: 100% !important;
-          height: 100vh !important;
+
+        .summary-print-container {
+          background-color: #0d0d0d !important;
+          color: #f1f5f9 !important;
+          padding: 40px !important;
           border: none !important;
           box-shadow: none !important;
-          background: white !important;
+          width: 100% !important;
+          max-width: none !important;
         }
-        .slide-image {
-          filter: none !important;
-          opacity: 1 !important;
+
+        /* Ensure heading colors print correctly */
+        h1, h2, h3, h4, strong {
+          color: #10b981 !important; /* Emerald-500 equivalent */
+          -webkit-print-color-adjust: exact !important;
         }
+        
+        p, li {
+          color: #cbd5e1 !important; /* Slate-300 equivalent */
+          -webkit-print-color-adjust: exact !important;
+        }
+      }
+
+      /* Specific styles for PDF generation capture */
+      .pdf-export-mode {
+        background-color: #0d0d0d !important;
+        color: #f1f5f9 !important;
+        padding: 40px !important;
       }
     </style>
   <script type="importmap">

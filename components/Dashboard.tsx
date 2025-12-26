@@ -30,7 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, chats, assets, onAction, on
             <div className="w-14 h-14 bg-indigo-600/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 group-hover:scale-110 transition-transform">
               <i className="fas fa-plus text-xl"></i>
             </div>
-            <h3 className="text-xl font-bold mb-2">Neural Chat</h3>
+            <h3 className="text-xl font-bold mb-2">Smart Chat</h3>
             <p className="text-slate-500 text-sm">Start a conversational reasoning session with Gemini 3 Pro.</p>
           </div>
 

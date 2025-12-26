@@ -47,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, chats, activeChatId, o
         </nav>
 
         <div className="flex items-center justify-between mb-4 px-2">
-           <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Neural Chats</span>
+           <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Saved Discussions</span>
            <button onClick={onNewChat} className="text-slate-500 hover:text-indigo-400 p-1"><i className="fas fa-plus"></i></button>
         </div>
 

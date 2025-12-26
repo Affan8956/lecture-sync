@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { Message, AIMode, LabTool } from "../types";
+import { Message, AIMode } from "../types";
 
 const PRO_MODEL = "gemini-3-pro-preview";
 
@@ -50,84 +50,95 @@ export const streamChatResponse = async (
   }
 };
 
-// --- STRUCTURED LAB TOOLS ---
-export const generateLabContent = async (
-  fileData: { base64: string; mimeType: string },
-  tool: LabTool
+// --- UNIFIED LAB PROCESSING ---
+export const processUnifiedLabContent = async (
+  source: { file?: { base64: string; mimeType: string }; url?: string }
 ): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  let prompt = "";
-  let responseSchema: any = { type: Type.OBJECT };
+  const instruction = `You are a world-class educational content creator. 
+  Perform a deep analysis of the provided material to generate a "Mastery Learning Package".
 
-  if (tool === 'summary') {
-    prompt = "Analyze this file and create a deep markdown summary. Use H1 for title, H2 for sections, and bullet points for details. Bold key terms.";
-    responseSchema = {
-      type: Type.OBJECT,
-      properties: { title: { type: Type.STRING }, summary: { type: Type.STRING } },
-      required: ["title", "summary"]
-    };
-  } else if (tool === 'quiz') {
-    prompt = "Generate a 5-question multiple choice quiz based on this content. Include correct answers and explanations.";
-    responseSchema = {
-      type: Type.OBJECT,
-      properties: {
-        title: { type: Type.STRING },
-        quiz: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              question: { type: Type.STRING },
-              options: { type: Type.ARRAY, items: { type: Type.STRING } },
-              correctAnswer: { type: Type.INTEGER },
-              explanation: { type: Type.STRING }
-            },
-            required: ["question", "options", "correctAnswer", "explanation"]
-          }
+  STRICT LOGIC ORDER:
+  1. ANALYZE: Watch the YouTube video (or read the file) and understand all key points.
+  2. SUMMARY: Create an exhaustive markdown summary. Include H1, H2, bolding, and bullet points.
+  3. QUIZ & SLIDES: Using ONLY the summary you just created as your source of truth, generate:
+     - 10 Multiple Choice Questions (Quiz).
+     - 12 Presentation Slides.
+  
+  This ensures that every question and every slide is 100% consistent with the summary provided to the student. 
+  Do not include external information or details from the video that are not reflected in your generated summary.
+
+  IF THIS IS A YOUTUBE LINK: You must utilize search grounding to find the most accurate transcript and video details.
+
+  OUTPUT MUST BE A SINGLE JSON OBJECT.`;
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      summary: {
+        type: Type.OBJECT,
+        properties: {
+          content: { type: Type.STRING, description: "Markdown formatted summary" }
+        },
+        required: ["content"]
+      },
+      quiz: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            options: { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctAnswer: { type: Type.INTEGER },
+            explanation: { type: Type.STRING }
+          },
+          required: ["question", "options", "correctAnswer", "explanation"]
         }
       },
-      required: ["title", "quiz"]
-    };
-  } else if (tool === 'slides') {
-    prompt = "Create a 10-slide professional presentation. For each slide, provide a title, 3-4 bullet points, speaker notes, and a SINGLE NOUN OR SIMPLE 2-WORD PHRASE for a relevant background image (e.g., 'microscope', 'galaxy', 'dna', 'robotics'). Do not use generic words like 'slide' or 'presentation'.";
-    responseSchema = {
-      type: Type.OBJECT,
-      properties: {
-        title: { type: Type.STRING },
-        slides: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              slideTitle: { type: Type.STRING },
-              bullets: { type: Type.ARRAY, items: { type: Type.STRING } },
-              speakerNotes: { type: Type.STRING },
-              imageKeyword: { type: Type.STRING }
-            },
-            required: ["slideTitle", "bullets", "speakerNotes", "imageKeyword"]
-          }
+      slides: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            slideTitle: { type: Type.STRING },
+            bullets: { type: Type.ARRAY, items: { type: Type.STRING } },
+            speakerNotes: { type: Type.STRING },
+            imageKeyword: { type: Type.STRING }
+          },
+          required: ["slideTitle", "bullets", "speakerNotes", "imageKeyword"]
         }
-      },
-      required: ["title", "slides"]
-    };
+      }
+    },
+    required: ["title", "summary", "quiz", "slides"]
+  };
+
+  const parts: any[] = [];
+  if (source.file) {
+    parts.push({ inlineData: { data: source.file.base64, mimeType: source.file.mimeType } });
+  } else if (source.url) {
+    parts.push({ text: `Analyze this YouTube/Web resource: ${source.url}` });
   }
+  parts.push({ text: instruction });
 
   const response = await ai.models.generateContent({
     model: PRO_MODEL,
-    contents: {
-      parts: [
-        { inlineData: { data: fileData.base64, mimeType: fileData.mimeType } },
-        { text: prompt }
-      ]
-    },
+    contents: { parts },
     config: {
       responseMimeType: "application/json",
       responseSchema,
-      thinkingConfig: { thinkingBudget: 15000 },
-      maxOutputTokens: 30000
+      tools: source.url ? [{ googleSearch: {} }] : [],
+      thinkingConfig: { thinkingBudget: 25000 },
+      maxOutputTokens: 30000,
+      temperature: 0.1
     }
   });
 
-  return JSON.parse(response.text || "{}");
+  try {
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    console.error("Analysis pass failed", response.text);
+    throw new Error("AI synthesis pass failed. The content might be too complex for a single pass.");
+  }
 };

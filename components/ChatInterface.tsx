@@ -112,7 +112,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onUpdateChat }) => 
                 <i className="fas fa-pen text-[10px] text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"></i>
               </div>
             )}
-            <span className="text-[10px] text-slate-600 font-black uppercase tracking-widest">{chat.mode} Neural Link</span>
+            <span className="text-[10px] text-slate-600 font-black uppercase tracking-widest">{chat.mode} Intelligent Link</span>
           </div>
         </div>
       </header>
@@ -147,7 +147,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ chat, onUpdateChat }) => 
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Quantum reason with StudyEasierAI..."
+            placeholder="Reason with StudyEasierAI..."
             className="w-full bg-[#151515] border border-slate-800 rounded-2xl px-6 py-4 pr-16 text-sm text-slate-200 outline-none transition-all focus:border-indigo-500 shadow-2xl"
           />
           <button 

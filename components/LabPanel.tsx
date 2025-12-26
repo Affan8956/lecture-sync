@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LabTool, LabAsset } from '../types';
-import { generateLabContent } from '../services/geminiService';
+import { processUnifiedLabContent } from '../services/geminiService';
 import FileUpload from './FileUpload';
 import SummaryView from './SummaryView';
 import QuizView from './QuizView';
@@ -13,88 +13,84 @@ interface LabPanelProps {
 }
 
 const LabPanel: React.FC<LabPanelProps> = ({ onSaveAsset, viewingAsset }) => {
-  const [tool, setTool] = useState<LabTool>('summary');
+  const [activeTool, setActiveTool] = useState<LabTool>('summary');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastFile, setLastFile] = useState<File | null>(null);
-  
-  // Cache results per tool for the current active file
-  const [resultsCache, setResultsCache] = useState<Record<LabTool, any>>({
-    summary: null,
-    quiz: null,
-    slides: null
-  });
+  const [currentPackage, setCurrentPackage] = useState<any>(null);
+  const [lastSourceInfo, setLastSourceInfo] = useState<string | null>(null);
 
-  // Handle viewing an asset from the vault - more robust sync
+  // If viewing a saved asset from the vault
   useEffect(() => {
     if (viewingAsset) {
-      setTool(viewingAsset.type);
-      setResultsCache(prev => {
-        const newCache = { ...prev };
-        if (viewingAsset.type === 'summary') {
-          newCache.summary = { title: viewingAsset.title, summary: viewingAsset.content };
-        } else if (viewingAsset.type === 'quiz') {
-          newCache.quiz = { title: viewingAsset.title, quiz: viewingAsset.content };
-        } else if (viewingAsset.type === 'slides') {
-          newCache.slides = { title: viewingAsset.title, slides: viewingAsset.content };
-        }
-        return newCache;
-      });
+      setActiveTool(viewingAsset.type);
+      // For viewing existing assets, we wrap them back into our package format
+      const mockPackage: any = { title: viewingAsset.title };
+      if (viewingAsset.type === 'summary') mockPackage.summary = { content: viewingAsset.content };
+      if (viewingAsset.type === 'quiz') mockPackage.quiz = viewingAsset.content;
+      if (viewingAsset.type === 'slides') mockPackage.slides = viewingAsset.content;
+      setCurrentPackage(mockPackage);
     }
   }, [viewingAsset]);
 
-  const handleProcess = async (file: File) => {
+  const handleSourceSubmission = async (source: { file?: File; url?: string }) => {
     setLoading(true);
     setError(null);
-    setLastFile(file);
+    setLastSourceInfo(source.file?.name || source.url || "Resource");
 
     try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      });
-      reader.readAsDataURL(file);
-      const base64 = await base64Promise;
+      let sourcePayload: { file?: { base64: string; mimeType: string }; url?: string } = {};
 
-      const data = await generateLabContent({ base64, mimeType: file.type }, tool);
-      
-      const newCache = { ...resultsCache, [tool]: data };
-      setResultsCache(newCache);
-      
+      if (source.file) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        });
+        reader.readAsDataURL(source.file);
+        const base64 = await base64Promise;
+        sourcePayload = { file: { base64, mimeType: source.file.type } };
+      } else if (source.url) {
+        sourcePayload = { url: source.url };
+      }
+
+      // Generate ALL content (Summary, Quiz, Slides) in one AI pass
+      const result = await processUnifiedLabContent(sourcePayload);
+      setCurrentPackage(result);
+
+      // Save each generated part as an individual asset for the vault
       onSaveAsset({
-        title: data.title || file.name,
-        type: tool,
-        content: data[tool] || data,
-        sourceName: file.name
+        title: result.title,
+        type: 'summary',
+        content: result.summary.content,
+        sourceName: lastSourceInfo || "Resource"
       });
+      onSaveAsset({
+        title: result.title,
+        type: 'quiz',
+        content: result.quiz,
+        sourceName: lastSourceInfo || "Resource"
+      });
+      onSaveAsset({
+        title: result.title,
+        type: 'slides',
+        content: result.slides,
+        sourceName: lastSourceInfo || "Resource"
+      });
+
     } catch (err: any) {
-      setError(err.message || "Processing failed");
+      setError(err.message || "Unified processing failed. Check network or source availability.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToolSwitch = async (t: LabTool) => {
-    setTool(t);
-    setError(null);
-    
-    // If we have a file but no result for this tool, automatically trigger generation
-    if (lastFile && !resultsCache[t]) {
-      handleProcess(lastFile);
-    }
-  };
-
-  const activeResult = resultsCache[tool];
-
-  const downloadData = (data: any, filename: string) => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const downloadPackage = () => {
+    if (!currentPackage) return;
+    const blob = new Blob([JSON.stringify(currentPackage, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
+    link.download = `${currentPackage.title.replace(/\s+/g, '_')}_package.json`;
     link.click();
-    document.body.removeChild(link);
   };
 
   return (
@@ -104,79 +100,99 @@ const LabPanel: React.FC<LabPanelProps> = ({ onSaveAsset, viewingAsset }) => {
           <h1 className="text-4xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
             Knowledge Lab
           </h1>
-          <p className="text-slate-500">Extract structured intelligence from your documents and presentations.</p>
+          <p className="text-slate-500 font-medium">Single-pass intelligent extraction from any source.</p>
         </header>
 
-        {/* Tool Selector */}
-        <div className="flex justify-center gap-4 mb-10 no-print">
-          {(['summary', 'quiz', 'slides'] as LabTool[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => handleToolSwitch(t)}
-              className={`px-8 py-3 rounded-2xl font-bold transition-all border ${
-                tool === t 
-                ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' 
-                : 'bg-[#151515] border-slate-800 text-slate-500 hover:border-slate-700'
-              }`}
-            >
-              <i className={`fas mr-2 ${t === 'summary' ? 'fa-file-alt' : t === 'quiz' ? 'fa-tasks' : 'fa-presentation'}`}></i>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* Tab Switching (Only show if we have data or are loading) */}
+        {(currentPackage || loading) && (
+          <div className="flex justify-center gap-4 mb-10 no-print">
+            {(['summary', 'quiz', 'slides'] as LabTool[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setActiveTool(t)}
+                disabled={loading}
+                className={`px-8 py-3 rounded-2xl font-bold transition-all border ${
+                  activeTool === t 
+                  ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' 
+                  : 'bg-[#151515] border-slate-800 text-slate-500 hover:text-slate-300'
+                } disabled:opacity-50`}
+              >
+                <i className={`fas mr-2 ${t === 'summary' ? 'fa-file-alt' : t === 'quiz' ? 'fa-tasks' : 'fa-presentation'}`}></i>
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {!activeResult && !loading && (
+        {!currentPackage && !loading && (
           <div className="animate-fadeIn no-print">
             <div className="mb-4 text-center">
-              <p className="text-sm text-slate-500 italic">
-                {lastFile ? `Active File: ${lastFile.name}` : "Upload a PDF, Text or Audio file to begin."}
-              </p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Unified Summary-First Pass</p>
             </div>
-            <FileUpload onUpload={handleProcess} isLoading={loading} />
+            <FileUpload 
+              onUpload={(file) => handleSourceSubmission({ file })} 
+              onUrlSubmit={(url) => handleSourceSubmission({ url })}
+              isLoading={loading} 
+            />
           </div>
         )}
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-6 no-print">
-            <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
-            <p className="text-emerald-400 font-bold animate-pulse uppercase tracking-widest text-xs">StudyEasierAI is processing...</p>
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <i className="fas fa-microscope text-emerald-500 animate-pulse text-xs"></i>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-emerald-400 font-black animate-pulse uppercase tracking-[0.3em] text-[10px]">AI Analyzing Content Package...</p>
+              <p className="text-slate-600 text-[9px] mt-2 font-bold uppercase tracking-widest">Generating Summary, Quiz, and Slides sequentially for consistency</p>
+            </div>
           </div>
         )}
 
         {error && (
-          <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl text-rose-400 text-center mb-8 no-print">
+          <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl text-rose-400 text-center mb-8 no-print font-bold text-xs uppercase tracking-widest">
             <i className="fas fa-exclamation-triangle mr-2"></i> {error}
+            <button onClick={() => setError(null)} className="ml-4 underline">Retry</button>
           </div>
         )}
 
-        {activeResult && !loading && (
+        {currentPackage && !loading && (
           <div className="animate-fadeIn space-y-8">
             <div className="flex justify-between items-center bg-[#151515] p-4 rounded-2xl border border-slate-800 no-print">
-              <p className="text-xs text-slate-500">
-                <i className="fas fa-file mr-2"></i> Content: <span className="text-slate-300 font-bold">{activeResult.title || viewingAsset?.title}</span>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <i className="fas fa-fingerprint mr-2 text-emerald-500"></i> Entity: <span className="text-slate-300">{currentPackage.title}</span>
               </p>
               <div className="flex gap-4">
                 <button 
-                  onClick={() => downloadData(activeResult, `${tool}_asset.json`)}
-                  className="text-emerald-500 hover:text-emerald-400 transition-colors flex items-center gap-2 font-bold text-xs"
+                  onClick={downloadPackage}
+                  className="text-emerald-500 hover:text-emerald-400 transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                 >
-                  <i className="fas fa-download"></i> Download JSON
+                  <i className="fas fa-download"></i> Full Export
                 </button>
                 <button 
                   onClick={() => {
-                    setResultsCache({ summary: null, quiz: null, slides: null });
-                    setLastFile(null);
+                    setCurrentPackage(null);
+                    setLastSourceInfo(null);
                   }}
-                  className="text-rose-500 hover:text-rose-400 transition-colors flex items-center gap-2 font-bold text-xs"
+                  className="text-rose-500 hover:text-rose-400 transition-colors flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                 >
-                  <i className="fas fa-trash"></i> Reset
+                  <i className="fas fa-sync"></i> New Source
                 </button>
               </div>
             </div>
             
-            {tool === 'summary' && <SummaryView summary={activeResult.summary} title={activeResult.title} />}
-            {tool === 'quiz' && <QuizView quiz={activeResult.quiz} />}
-            {tool === 'slides' && <SlideView slides={activeResult.slides} />}
+            {activeTool === 'summary' && currentPackage.summary && (
+              <SummaryView summary={currentPackage.summary.content} title={currentPackage.title} />
+            )}
+            {activeTool === 'quiz' && currentPackage.quiz && (
+              <QuizView quiz={currentPackage.quiz} />
+            )}
+            {activeTool === 'slides' && currentPackage.slides && (
+              <SlideView slides={currentPackage.slides} />
+            )}
           </div>
         )}
       </div>

@@ -3,11 +3,14 @@ import React, { useRef, useState } from 'react';
 
 interface FileUploadProps {
   onUpload: (file: File) => void;
+  onUrlSubmit: (url: string) => void;
   isLoading: boolean;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isLoading }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onUpload, onUrlSubmit, isLoading }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [activeTab, setActiveTab] = useState<'file' | 'url'>('file');
+  const [url, setUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -43,41 +46,97 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isLoading }) => {
     }
   };
 
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (url.trim()) {
+      onUrlSubmit(url.trim());
+    }
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto p-8">
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-          isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-white hover:bg-gray-50'
-        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept=".pdf,audio/*"
-          className="hidden"
-          disabled={isLoading}
-        />
-        
-        <div className="text-center">
-          <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full">
-            <i className="fas fa-cloud-upload-alt text-2xl"></i>
+    <div className="w-full max-w-2xl mx-auto p-4 md:p-8 animate-fadeIn">
+      {/* Tab Switcher */}
+      <div className="flex bg-[#151515] p-1.5 rounded-2xl mb-6 border border-slate-800 max-w-xs mx-auto">
+        <button 
+          onClick={() => setActiveTab('file')}
+          className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'file' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <i className="fas fa-file-upload mr-2"></i> File
+        </button>
+        <button 
+          onClick={() => setActiveTab('url')}
+          className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'url' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <i className="fab fa-youtube mr-2"></i> AI Link
+        </button>
+      </div>
+
+      <div className="bg-[#121212] rounded-3xl border border-slate-800 p-8 shadow-2xl">
+        {activeTab === 'file' ? (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => !isLoading && fileInputRef.current?.click()}
+            className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+              isDragging ? 'border-indigo-500 bg-indigo-500/5' : 'border-slate-800 hover:border-indigo-500/50 hover:bg-white/5'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,audio/*"
+              className="hidden"
+              disabled={isLoading}
+            />
+            
+            <div className="text-center">
+              <div className="mb-6 inline-flex items-center justify-center w-16 h-16 bg-indigo-600/10 text-indigo-500 rounded-2xl shadow-xl">
+                <i className="fas fa-cloud-upload-alt text-2xl"></i>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-tight">
+                Upload Content
+              </h3>
+              <p className="text-slate-500 text-sm max-w-sm px-4 leading-relaxed font-medium">
+                Drag and drop your PDF or audio recording for intelligent processing.
+              </p>
+              <div className="mt-6 flex gap-6 justify-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
+                <span className="flex items-center gap-2"><i className="fas fa-file-pdf text-indigo-500"></i> PDF</span>
+                <span className="flex items-center gap-2"><i className="fas fa-microphone text-indigo-500"></i> AUDIO</span>
+              </div>
+            </div>
           </div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">
-            Upload Lecture Materials
-          </h3>
-          <p className="text-gray-500 max-w-sm px-4">
-            Drag and drop your lecture PDF or audio recording here, or click to browse.
-          </p>
-          <div className="mt-4 flex gap-4 justify-center text-xs font-medium uppercase tracking-wider text-gray-400">
-            <span><i className="fas fa-file-pdf mr-1"></i> PDF</span>
-            <span><i className="fas fa-microphone mr-1"></i> MP3 / WAV</span>
+        ) : (
+          <div className="flex flex-col items-center py-6">
+            <div className="mb-8 inline-flex items-center justify-center w-16 h-16 bg-red-600/10 text-red-500 rounded-2xl shadow-xl">
+              <i className="fab fa-youtube text-2xl"></i>
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-tight">
+              YouTube AI Pass
+            </h3>
+            <p className="text-slate-500 text-sm mb-8 text-center max-w-sm leading-relaxed font-medium">
+              Enter a YouTube URL. Our AI will extract the summary first, then build your quiz and slides for total consistency.
+            </p>
+            <form onSubmit={handleUrlSubmit} className="w-full relative group">
+              <input 
+                type="url"
+                required
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="w-full bg-[#0d0d0d] border-2 border-slate-800 rounded-2xl px-6 py-4 pr-16 text-sm text-slate-200 outline-none transition-all focus:border-red-600 shadow-2xl font-medium"
+              />
+              <button 
+                type="submit"
+                disabled={isLoading || !url.trim()}
+                className="absolute right-2 top-2 w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+              >
+                <i className={`fas ${isLoading ? 'fa-spinner fa-spin' : 'fa-arrow-right'}`}></i>
+              </button>
+            </form>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

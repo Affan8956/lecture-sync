@@ -67,7 +67,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUpload, onUrlSubmit, isLoadin
           onClick={() => setActiveTab('url')}
           className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'url' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
         >
-          <i className="fab fa-youtube mr-2"></i> AI Link
+          <i className="fab fa-youtube mr-2"></i> Link
         </button>
       </div>
 
@@ -113,7 +113,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUpload, onUrlSubmit, isLoadin
               <i className="fab fa-youtube text-2xl"></i>
             </div>
             <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-tight">
-              YouTube AI Pass
+              YouTube Link
             </h3>
             <p className="text-slate-500 text-sm mb-8 text-center max-w-sm leading-relaxed font-medium">
               Enter a YouTube URL. Our AI will extract the summary first, then build your quiz and slides for total consistency.

@@ -1,26 +1,50 @@
 
 import { User } from '../types';
 
-// Using localStorage to simulate a database for the purpose of this demonstration
+// Using localStorage to simulate a database
 const USERS_KEY = 'studyeasier_users';
 const SESSION_KEY = 'studyeasier_session';
 
-export const signup = async (name: string, email: string, password: string): Promise<User> => {
-  // Simulate network delay
+// Temporary store for OTPs (In a real app, this is server-side)
+let tempOtpStore: Record<string, { otp: string; data: any }> = {};
+
+export const sendVerificationOtp = async (name: string, email: string): Promise<string> => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  if (users.find((u: any) => u.email === email)) {
+    throw new Error('An account with this email already exists.');
+  }
+
+  // Generate a random 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  
+  // Store it temporarily for verification
+  tempOtpStore[email] = { otp, data: { name, email } };
+  
+  // Simulate sending email
+  console.log(`[SIMULATED EMAIL] To: ${email} | Subject: Your Verification Code | Body: ${otp}`);
+  alert(`SIMULATED EMAIL SENT TO ${email}\nYour OTP is: ${otp}`);
+  
+  return otp;
+};
+
+export const verifyOtpAndSignup = async (email: string, otp: string, password: string): Promise<User> => {
   await new Promise(resolve => setTimeout(resolve, 800));
+
+  const storedData = tempOtpStore[email];
+  
+  if (!storedData || storedData.otp !== otp) {
+    throw new Error('Invalid verification code. Please try again.');
+  }
 
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
   
-  if (users.find((u: any) => u.email === email)) {
-    throw new Error('User already exists with this email.');
-  }
-
-  // FIX: Set defaultMode to 'study' as 'general' is not a valid AIMode value
   const newUser = {
     id: Math.random().toString(36).substr(2, 9),
-    name,
-    email,
-    password, // In a real app, this would be hashed on the server
+    name: storedData.data.name,
+    email: storedData.data.email,
+    password, 
     preferences: {
       theme: 'dark' as const,
       defaultMode: 'study' as const,
@@ -29,6 +53,9 @@ export const signup = async (name: string, email: string, password: string): Pro
 
   users.push(newUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  
+  // Clear the used OTP
+  delete tempOtpStore[email];
 
   const { password: _, ...userWithoutPassword } = newUser;
   return userWithoutPassword as User;

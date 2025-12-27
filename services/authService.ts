@@ -1,90 +1,98 @@
 
 import { User } from '../types';
+import { supabase } from './supabaseClient';
 
-// Using localStorage to simulate a database
-const USERS_KEY = 'studyeasier_users';
-const SESSION_KEY = 'studyeasier_session';
-
-// Temporary store for OTPs (In a real app, this is server-side)
-let tempOtpStore: Record<string, { otp: string; data: any }> = {};
-
-export const sendVerificationOtp = async (name: string, email: string): Promise<string> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  if (users.find((u: any) => u.email === email)) {
-    throw new Error('An account with this email already exists.');
-  }
-
-  // Generate a random 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
-  // Store it temporarily for verification
-  tempOtpStore[email] = { otp, data: { name, email } };
-  
-  // Simulate sending email
-  console.log(`[SIMULATED EMAIL] To: ${email} | Subject: Your Verification Code | Body: ${otp}`);
-  alert(`SIMULATED EMAIL SENT TO ${email}\nYour OTP is: ${otp}`);
-  
-  return otp;
-};
-
-export const verifyOtpAndSignup = async (email: string, otp: string, password: string): Promise<User> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  const storedData = tempOtpStore[email];
-  
-  if (!storedData || storedData.otp !== otp) {
-    throw new Error('Invalid verification code. Please try again.');
-  }
-
-  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  
-  const newUser = {
-    id: Math.random().toString(36).substr(2, 9),
-    name: storedData.data.name,
-    email: storedData.data.email,
-    password, 
-    preferences: {
-      theme: 'dark' as const,
-      defaultMode: 'study' as const,
-    },
+const mapSupabaseUserToAppUser = (supabaseUser: any, profile: any): User => {
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    name: profile?.name || supabaseUser.user_metadata?.full_name || 'Student',
+    preferences: profile?.preferences || {
+      theme: 'dark',
+      defaultMode: 'study'
+    }
   };
-
-  users.push(newUser);
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  
-  // Clear the used OTP
-  delete tempOtpStore[email];
-
-  const { password: _, ...userWithoutPassword } = newUser;
-  return userWithoutPassword as User;
 };
 
-export const login = async (email: string, password: string): Promise<{ user: User; token: string }> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
+export const login = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  const user = users.find((u: any) => u.email === email && u.password === password);
-
-  if (!user) {
-    throw new Error('Invalid email or password.');
+  if (error) {
+    // Check for specific "Email not confirmed" error
+    if (error.message.toLowerCase().includes('email not confirmed')) {
+      throw new Error('EMAIL_NOT_CONFIRMED');
+    }
+    throw error;
   }
 
-  const token = btoa(JSON.stringify({ id: user.id, email: user.email, exp: Date.now() + 86400000 }));
-  const { password: _, ...userWithoutPassword } = user;
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', data.user.id)
+    .maybeSingle();
 
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ user: userWithoutPassword, token }));
+  return { 
+    user: mapSupabaseUserToAppUser(data.user, profile), 
+    token: data.session?.access_token 
+  };
+};
+
+export const signup = async (name: string, email: string, password: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: name },
+      emailRedirectTo: window.location.origin
+    }
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes('user already registered')) {
+      throw new Error('USER_ALREADY_EXISTS');
+    }
+    throw error;
+  }
   
-  return { user: userWithoutPassword as User, token };
+  // Note: Supabase might return an empty user array if the email is already registered 
+  // but not confirmed, depending on project settings.
+  return data.user;
 };
 
-export const logout = () => {
-  localStorage.removeItem(SESSION_KEY);
+export const resendConfirmationEmail = async (email: string) => {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email,
+    options: {
+      emailRedirectTo: window.location.origin
+    }
+  });
+  if (error) throw error;
 };
 
-export const getCurrentSession = (): { user: User; token: string } | null => {
-  const session = localStorage.getItem(SESSION_KEY);
-  if (!session) return null;
-  return JSON.parse(session);
+export const logout = async () => {
+  await supabase.auth.signOut();
+};
+
+export const getCurrentSession = async () => {
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) return null;
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    return { 
+      user: mapSupabaseUserToAppUser(session.user, profile), 
+      token: session.access_token 
+    };
+  } catch (e) {
+    return null;
+  }
 };

@@ -5,7 +5,7 @@ import { streamChatResponse } from '../services/geminiService';
 
 interface ChatInterfaceProps {
   chat: ChatSession | null;
-  onSendMessage: (msg: string) => void;
+  // Removed onSendMessage as it is handled internally via streamChatResponse in handleSubmit
   onUpdateChat: (updated: ChatSession) => void;
 }
 

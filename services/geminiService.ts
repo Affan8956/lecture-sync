@@ -3,13 +3,14 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Message, AIMode } from "../types";
 
 const PRO_MODEL = "gemini-3-pro-preview";
+const IMAGE_MODEL = "gemini-2.5-flash-image";
 
 const SYSTEM_PROMPTS: Record<AIMode, string> = {
-  study: "You are an expert academic tutor. Break down complex topics into simple analogies. Use markdown headers.",
-  coding: "You are a senior software engineer. Provide high-quality, documented code blocks. Be concise.",
-  writing: "You are a creative editor. Help users draft prose. Focus on tone, style, and structure.",
-  tutor: "You are a Socratic teacher. Guide users with questions instead of giving direct answers.",
-  research: "You are a technical analyst. Provide dense, data-driven explanations with structured evidence."
+  study: "You are an expert academic tutor. Break down complex topics into simple analogies. Use markdown headers. Always respond in English unless specifically asked otherwise. Provide deep, structured reasoning.",
+  coding: "You are a senior software engineer. Provide high-quality, documented code blocks. Be concise. Always respond in English.",
+  writing: "You are a creative editor. Help users draft prose. Focus on tone, style, and structure. Always respond in English.",
+  tutor: "You are a Socratic teacher. Guide users with questions instead of giving direct answers. Always respond in English.",
+  research: "You are a technical analyst. Provide dense, data-driven explanations with structured evidence. Always respond in English."
 };
 
 // --- CHAT STREAMING ---
@@ -50,28 +51,62 @@ export const streamChatResponse = async (
   }
 };
 
+// --- SLIDE IMAGE GENERATION ---
+export const generateSlideImage = async (title: string, context: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const prompt = `Generate a high-quality, professional, and educational 3D illustration or conceptual photograph for a lecture slide. 
+  Topic: ${title}
+  Content Context: ${context}
+  Style: Clean, modern, academic, high-resolution. No text in the image. Vibrant but professional colors.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9"
+        }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+    throw new Error("No image data returned");
+  } catch (err) {
+    console.error("Image generation failed:", err);
+    return `https://loremflickr.com/1280/720/${encodeURIComponent(title || 'education')}`;
+  }
+};
+
 // --- UNIFIED LAB PROCESSING ---
 export const processUnifiedLabContent = async (
   source: { file?: { base64: string; mimeType: string }; url?: string }
 ): Promise<any> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const instruction = `You are a world-class educational content creator. 
-  Perform a deep analysis of the provided material to generate a "Mastery Learning Package".
+  const instruction = `You are a world-class educational content creator and expert translator. 
 
-  STRICT LOGIC ORDER:
-  1. ANALYZE: Watch the YouTube video (or read the file) and understand all key points.
-  2. SUMMARY: Create an exhaustive markdown summary. Include H1, H2, bolding, and bullet points.
-  3. QUIZ & SLIDES: Using ONLY the summary you just created as your source of truth, generate:
-     - 10 Multiple Choice Questions (Quiz).
-     - 12 Presentation Slides.
-  
-  This ensures that every question and every slide is 100% consistent with the summary provided to the student. 
-  Do not include external information or details from the video that are not reflected in your generated summary.
+  CORE MISSION: 
+  Perform a deep analysis of the provided material to generate an "Elite Mastery Learning Package".
 
-  IF THIS IS A YOUTUBE LINK: You must utilize search grounding to find the most accurate transcript and video details.
+  STRICT CONTENT DEPTH:
+  - TITLE: Concise and academic.
+  - MASTER SUMMARY: Exhaustive English markdown summary. Detailed H1, H2, H3 structure.
+  - QUIZ: 10 challenging Multiple Choice Questions with deep explanations.
+  - SLIDES (12 Slides):
+    * Each slide must have 5-8 detailed, high-value bullet points.
+    * Speaker notes must be a comprehensive script of at least 150 words per slide.
+    * imageKeyword must be a highly descriptive scene prompt for an AI image generator.
 
-  OUTPUT MUST BE A SINGLE JSON OBJECT.`;
+  MULTILINGUAL PROTOCOL:
+  - Translate all concepts accurately into English if the source is non-English.
+  - THE ENTIRE OUTPUT MUST BE IN ENGLISH.
+
+  OUTPUT MUST BE A SINGLE VALID JSON OBJECT matching the responseSchema.`;
 
   const responseSchema = {
     type: Type.OBJECT,
@@ -79,9 +114,7 @@ export const processUnifiedLabContent = async (
       title: { type: Type.STRING },
       summary: {
         type: Type.OBJECT,
-        properties: {
-          content: { type: Type.STRING, description: "Markdown formatted summary" }
-        },
+        properties: { content: { type: Type.STRING } },
         required: ["content"]
       },
       quiz: {
@@ -118,7 +151,7 @@ export const processUnifiedLabContent = async (
   if (source.file) {
     parts.push({ inlineData: { data: source.file.base64, mimeType: source.file.mimeType } });
   } else if (source.url) {
-    parts.push({ text: `Analyze this YouTube/Web resource: ${source.url}` });
+    parts.push({ text: `Analyze and translate content from: ${source.url}` });
   }
   parts.push({ text: instruction });
 
@@ -136,9 +169,9 @@ export const processUnifiedLabContent = async (
   });
 
   try {
-    return JSON.parse(response.text || "{}");
+    const text = response.text || "{}";
+    return JSON.parse(text);
   } catch (e) {
-    console.error("Analysis pass failed", response.text);
-    throw new Error("AI synthesis pass failed. The content might be too complex for a single pass.");
+    throw new Error("AI synthesis pass failed. The content might be too complex or the transcript was unavailable.");
   }
 };

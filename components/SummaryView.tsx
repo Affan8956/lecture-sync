@@ -25,33 +25,23 @@ const SummaryView: React.FC<SummaryViewProps> = ({ summary, title }) => {
     a.href = url;
     a.download = `${title.replace(/\s+/g, '_')}_summary.md`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleGeneratePDF = () => {
     if (!summaryRef.current) return;
-
-    // Create a clone for the PDF to apply specific formatting without affecting UI
     const element = summaryRef.current.cloneNode(true) as HTMLElement;
-    
-    // Remove the action buttons from the PDF version
     const actionButtons = element.querySelector('.no-print');
     if (actionButtons) actionButtons.remove();
 
-    // Configuration for html2pdf to maintain theme aesthetics
     const opt = {
       margin: [15, 15, 15, 15],
       filename: `${title.replace(/\s+/g, '_')}_StudySummary.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        backgroundColor: '#0d0d0d',
-        logging: false
-      },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d0d0d' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Use the library added to index.html
     // @ts-ignore
     window.html2pdf().set(opt).from(element).save();
   };
@@ -70,7 +60,8 @@ const SummaryView: React.FC<SummaryViewProps> = ({ summary, title }) => {
       }
       if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
         return (
-          <li key={i} className="ml-6 list-none mb-3 text-slate-300 relative pl-6 before:content-['•'] before:absolute before:left-0 before:text-emerald-500 before:font-bold before:text-xl before:-top-1 leading-relaxed">
+          <li key={i} className="ml-6 list-none mb-3 text-slate-300 relative pl-6 leading-relaxed">
+            <span className="absolute left-0 text-emerald-500 font-bold">•</span>
             {formatText(trimmed.substring(2))}
           </li>
         );

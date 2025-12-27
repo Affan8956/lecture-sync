@@ -4,57 +4,67 @@ import { User, ChatSession, LabAsset } from '../types';
 const DB_NAME = 'StudyEasierDB';
 const DB_VERSION = 1;
 
-/**
- * Robust Local Database Service (IndexedDB)
- * This mimics a real production database (like MongoDB or Postgres) 
- * but runs entirely in the user's browser for privacy and speed.
- */
 class StudyEasierDatabase {
   private db: IDBDatabase | null = null;
+  private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
     if (this.db) return;
+    if (this.initPromise) return this.initPromise;
 
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+    this.initPromise = new Promise((resolve, reject) => {
+      try {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onerror = () => reject('Database failed to open');
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve();
-      };
+        request.onerror = () => {
+          console.error('IndexedDB failed to open. Assets will be session-only.');
+          reject('Database failed to open');
+        };
 
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
-        
-        // Create tables (Object Stores)
-        if (!db.objectStoreNames.contains('users')) {
-          db.createObjectStore('users', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('chats')) {
-          db.createObjectStore('chats', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('assets')) {
-          db.createObjectStore('assets', { keyPath: 'id' });
-        }
-      };
+        request.onsuccess = () => {
+          this.db = request.result;
+          resolve();
+        };
+
+        request.onupgradeneeded = (event: any) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('users')) {
+            db.createObjectStore('users', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('chats')) {
+            db.createObjectStore('chats', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('assets')) {
+            db.createObjectStore('assets', { keyPath: 'id' });
+          }
+        };
+      } catch (e) {
+        reject(e);
+      }
     });
+
+    return this.initPromise;
   }
 
-  // Generic CRUD helpers
   private async performAction(storeName: string, mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest): Promise<any> {
-    await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(storeName, mode);
-      const store = transaction.objectStore(storeName);
-      const request = action(store);
+    try {
+      await this.init();
+      if (!this.db) throw new Error("Database not initialized");
+      
+      return new Promise((resolve, reject) => {
+        const transaction = this.db!.transaction(storeName, mode);
+        const store = transaction.objectStore(storeName);
+        const request = action(store);
 
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (err) {
+      console.warn(`Local DB Action Failed on ${storeName}:`, err);
+      return mode === 'readonly' ? [] : null;
+    }
   }
 
-  // --- USER OPERATIONS ---
   async saveUser(user: any): Promise<void> {
     await this.performAction('users', 'readwrite', (s) => s.put(user));
   }
@@ -63,13 +73,13 @@ class StudyEasierDatabase {
     return this.performAction('users', 'readonly', (s) => s.getAll());
   }
 
-  // --- CHAT OPERATIONS ---
   async saveChat(chat: ChatSession): Promise<void> {
     await this.performAction('chats', 'readwrite', (s) => s.put(chat));
   }
 
   async getChats(userId: string): Promise<ChatSession[]> {
     const allChats: ChatSession[] = await this.performAction('chats', 'readonly', (s) => s.getAll());
+    if (!Array.isArray(allChats)) return [];
     return allChats.filter(c => c.userId === userId).sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
@@ -77,14 +87,30 @@ class StudyEasierDatabase {
     await this.performAction('chats', 'readwrite', (s) => s.delete(id));
   }
 
-  // --- ASSET OPERATIONS ---
   async saveAsset(asset: LabAsset): Promise<void> {
     await this.performAction('assets', 'readwrite', (s) => s.put(asset));
   }
 
   async getAssets(userId: string): Promise<LabAsset[]> {
     const allAssets: LabAsset[] = await this.performAction('assets', 'readonly', (s) => s.getAll());
+    if (!Array.isArray(allAssets)) return [];
     return allAssets.filter(a => a.userId === userId).sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    await this.performAction('assets', 'readwrite', (s) => s.delete(id));
+  }
+
+  async clearAssets(userId: string): Promise<void> {
+    const assets = await this.getAssets(userId);
+    if (!this.db) return;
+    const transaction = this.db!.transaction('assets', 'readwrite');
+    const store = transaction.objectStore('assets');
+    assets.forEach(a => store.delete(a.id));
+    return new Promise((res, rej) => {
+      transaction.oncomplete = () => res();
+      transaction.onerror = () => rej(transaction.error);
+    });
   }
 }
 

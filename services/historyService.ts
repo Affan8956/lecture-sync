@@ -169,3 +169,21 @@ export const getAssets = async (userId: string): Promise<LabAsset[]> => {
 
   return localAssets;
 };
+
+export const deleteAsset = async (userId: string, id: string) => {
+  await db.deleteAsset(id);
+  try {
+    await supabase.from('assets').delete().eq('id', id);
+  } catch (e) {
+    console.error("Cloud asset delete failed");
+  }
+};
+
+export const clearAllAssets = async (userId: string) => {
+  await db.clearAssets(userId);
+  try {
+    await supabase.from('assets').delete().eq('user_id', userId);
+  } catch (e) {
+    console.error("Cloud mass delete failed");
+  }
+};

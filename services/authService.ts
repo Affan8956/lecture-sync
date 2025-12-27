@@ -14,6 +14,16 @@ const mapSupabaseUserToAppUser = (supabaseUser: any, profile: any): User => {
   };
 };
 
+/**
+ * Wraps a promise in a timeout
+ */
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))
+  ]);
+};
+
 export const login = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -21,7 +31,6 @@ export const login = async (email: string, password: string) => {
   });
 
   if (error) {
-    // Check for specific "Email not confirmed" error
     if (error.message.toLowerCase().includes('email not confirmed')) {
       throw new Error('EMAIL_NOT_CONFIRMED');
     }
@@ -56,9 +65,6 @@ export const signup = async (name: string, email: string, password: string) => {
     }
     throw error;
   }
-  
-  // Note: Supabase might return an empty user array if the email is already registered 
-  // but not confirmed, depending on project settings.
   return data.user;
 };
 
@@ -79,9 +85,18 @@ export const logout = async () => {
 
 export const getCurrentSession = async () => {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) return null;
+    // Add a hard timeout of 2.5 seconds for session checking
+    // to prevent hanging on misconfigured cloud keys.
+    // Fixed: Explicitly cast result to 'any' to avoid "Property 'data' does not exist on type '{}'"
+    // This occurs because TypeScript inference can fail when mixing complex Supabase response types with Promise.race
+    const result = await withTimeout(
+      supabase.auth.getSession(),
+      2500
+    ) as any;
     
+    if (!result || result.error || !result.data?.session) return null;
+    
+    const { session } = result.data;
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
@@ -93,6 +108,7 @@ export const getCurrentSession = async () => {
       token: session.access_token 
     };
   } catch (e) {
+    console.warn("Auth initialization timed out or failed. Defaulting to logged-out state.");
     return null;
   }
 };

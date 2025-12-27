@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, ChatSession, ViewState, LabAsset, AuthState, AIMode } from './types';
 import { getCurrentSession, logout } from './services/authService';
-import { getHistory, saveChat, deleteChat, createNewChat, getAssets, saveAsset } from './services/historyService';
+import { getHistory, saveChat, deleteChat, createNewChat, getAssets, saveAsset, deleteAsset, clearAllAssets } from './services/historyService';
 import { supabase } from './services/supabaseClient';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
@@ -22,6 +22,15 @@ const App: React.FC = () => {
   const [isAppLoading, setIsAppLoading] = useState(true);
 
   useEffect(() => {
+    // SECURITY: Force clear loading after 4 seconds regardless of what happens
+    // This prevents the "Infinite Loading" bug if Supabase/DB hangs.
+    const hardTimeout = setTimeout(() => {
+      if (isAppLoading) {
+        console.warn("Initialization taking too long. Force-starting app.");
+        setIsAppLoading(false);
+      }
+    }, 4000);
+
     const init = async () => {
       try {
         const session = await getCurrentSession();
@@ -29,8 +38,11 @@ const App: React.FC = () => {
           setAuth({ user: session.user, token: session.token, isAuthenticated: true });
           await loadUserData(session.user.id);
         }
+      } catch (e) {
+        console.error("Initialization error:", e);
       } finally {
         setIsAppLoading(false);
+        clearTimeout(hardTimeout);
       }
     };
     init();
@@ -51,15 +63,18 @@ const App: React.FC = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(hardTimeout);
+    };
   }, []);
 
   const loadUserData = async (userId: string) => {
     if (!userId) return;
     try {
       const [history, savedAssets] = await Promise.all([
-        getHistory(userId),
-        getAssets(userId)
+        getHistory(userId).catch(() => []),
+        getAssets(userId).catch(() => [])
       ]);
       setChats(history);
       setAssets(savedAssets);
@@ -102,6 +117,20 @@ const App: React.FC = () => {
     setAssets(savedAssets);
   };
 
+  const handleDeleteAsset = async (id: string) => {
+    if (!auth.user) return;
+    await deleteAsset(auth.user.id, id);
+    setAssets(prev => prev.filter(a => a.id !== id));
+    if (viewingAsset?.id === id) setViewingAsset(null);
+  };
+
+  const handleClearAllAssets = async () => {
+    if (!auth.user) return;
+    await clearAllAssets(auth.user.id);
+    setAssets([]);
+    setViewingAsset(null);
+  };
+
   const handleOpenAsset = (asset: LabAsset) => {
     setViewingAsset(asset);
     setView('lab');
@@ -111,7 +140,8 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-white">
         <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-6"></div>
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400">Synchronizing Intelligence...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400">Initializing Core AI...</p>
+        <p className="text-slate-600 text-[9px] mt-4 uppercase font-bold tracking-widest">Verifying Academic Handshake</p>
       </div>
     );
   }
@@ -168,6 +198,8 @@ const App: React.FC = () => {
             assets={assets} 
             chats={chats} 
             onViewAsset={handleOpenAsset}
+            onDeleteAsset={handleDeleteAsset}
+            onClearAll={handleClearAllAssets}
           />
         )}
 
